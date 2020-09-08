@@ -3,4 +3,4 @@
 
 Edited via github.com
 
-potential Conflict
+Potential Conflict
