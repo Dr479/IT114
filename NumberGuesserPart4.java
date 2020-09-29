@@ -164,8 +164,8 @@ public class NumberGuesserPart4 {
 					System.out.println("loaded level " + level + " with " + strikes + " strikes");
 					
 				} else {
-					System.out.println("Ok! Not restarting.");
-					System.out.println("loaded level " + level + " with " + strikes + " strikes");
+					System.out.println("Not restarting.");
+					System.out.println("level loaded " + level + " with " + strikes + " strikes");
 				}
 			} else {
                number = getNumber(level);
