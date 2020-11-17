@@ -1,5 +1,6 @@
 package server;
 
+import java.util.Random;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -15,6 +16,10 @@ public class Room implements AutoCloseable {
     private final static String COMMAND_TRIGGER = "/";
     private final static String CREATE_ROOM = "createroom";
     private final static String JOIN_ROOM = "joinroom";
+    private final static String ROLL = "roll";
+    private final static String FLIP = "flip";
+    
+    Random rand = new Random();
 
     public Room(String name) {
 	this.name = name;
@@ -27,6 +32,7 @@ public class Room implements AutoCloseable {
     public String getName() {
 	return name;
     }
+    
 
     private List<ServerThread> clients = new ArrayList<ServerThread>();
 
@@ -84,7 +90,8 @@ public class Room implements AutoCloseable {
     protected void joinRoom(String room, ServerThread client) {
 	server.joinRoom(room, client);
     }
-
+    
+    
     protected void joinLobby(ServerThread client) {
 	server.joinLobby(client);
     }
@@ -112,7 +119,7 @@ public class Room implements AutoCloseable {
 		switch (command) {
 		case CREATE_ROOM:
 		    roomName = comm2[1];
-		    if (server.createNewRoom(roomName)) {
+		    if (server.createNewRoom(roomName)) {  //auto joins the room after createroo is entered
 			joinRoom(roomName, client);
 		    }
 		    wasCommand = true;
@@ -122,6 +129,19 @@ public class Room implements AutoCloseable {
 		    joinRoom(roomName, client);
 		    wasCommand = true;
 		    break;
+		case FLIP:
+			int bound2 = 2;
+			int attempt = rand.nextInt(bound2)+1;
+			System.out.println(attempt);
+			break;
+		case ROLL:
+			int bound = 11;
+			int randomNum = rand.nextInt(bound);
+			System.out.println(randomNum);
+		    break;
+		
+			
+		    
 		}
 	    }
 	}
@@ -155,11 +175,71 @@ public class Room implements AutoCloseable {
     protected void sendMessage(ServerThread sender, String message) {
 	log.log(Level.INFO, getName() + ": Sending message to " + clients.size() + " clients");
 	if (processCommands(message, sender)) {
-	    // it was a command, don't broadcast
-	    return;
+	    // it was a command, don't broadcast\
+	    return; 
 	}
 	Iterator<ServerThread> iter = clients.iterator();
+	
+	//flip
+	
+	if(message.equals("/flip")) 
+	{
+		int bound = 2;
+		int attempt = rand.nextInt(bound)+1;  // 0 or 1 + 1 = 1 or 2
+		
+		if(attempt == 1) 
+		{
+			String opt1 = "rolled heads!";
+			while (iter.hasNext()) 
+			{
+				
+			    ServerThread client = iter.next();
+			    boolean messageSent = client.send(sender.getClientName(), opt1);
+			    if (!messageSent) 
+			    {
+				iter.remove();
+				log.log(Level.INFO, "Removed client " + client.getId());
+			    }
+			}
+		}
+		
+		if(attempt == 2) 
+		{
+			String opt2 = "rolled tails!";
+			
+			while (iter.hasNext()) 
+			{
+			    ServerThread client = iter.next();
+			    boolean messageSent = client.send(sender.getClientName(), opt2);
+			    if (!messageSent) 
+			    {
+				iter.remove();
+				log.log(Level.INFO, "Removed client " + client.getId());
+			    }
+			}
+		}
+		
+	}
+	//roll features
+	if(message.equals("/roll")) {
+		int bound = 50;
+		int random = rand.nextInt(bound)+1;
+		String Message = "recieved a " + random;
+		
+		while (iter.hasNext()) {
+			
+			ServerThread client = iter.next();
+			boolean messageSent = client.send(sender.getClientName(), Message);
+		    if (!messageSent) {
+			iter.remove();
+			log.log(Level.INFO, "Removed client " + client.getId());
+		    }
+		}
+	}
+		
+	
 	while (iter.hasNext()) {
+		
 	    ServerThread client = iter.next();
 	    boolean messageSent = client.send(sender.getClientName(), message);
 	    if (!messageSent) {
