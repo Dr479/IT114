@@ -103,8 +103,8 @@ public class Room implements AutoCloseable {
      * @param client  The sender of the message (since they'll be the ones
      *                triggering the actions)
      */
-    private boolean processCommands(String message, ServerThread client) {
-	boolean wasCommand = false;
+    private String processCommands(String message, ServerThread client) {
+	String response = null;
 	try {
 	    if (message.indexOf(COMMAND_TRIGGER) > -1) {
 		String[] comm = message.split(COMMAND_TRIGGER);
@@ -119,36 +119,39 @@ public class Room implements AutoCloseable {
 		switch (command) {
 		case CREATE_ROOM:
 		    roomName = comm2[1];
-		    if (server.createNewRoom(roomName)) {  //auto joins the room after createroo is entered
+		    if (server.createNewRoom(roomName)) {  //auto joins the room after create room is entered
 			joinRoom(roomName, client);
 		    }
-		    wasCommand = true;
 		    break;
 		case JOIN_ROOM:
 		    roomName = comm2[1];
 		    joinRoom(roomName, client);
-		    wasCommand = true;
 		    break;
 		case FLIP:
-			int bound2 = 2;
-			int attempt = rand.nextInt(bound2)+1;
-			System.out.println(attempt);
+			String coin = "";
+			if (Math.random() < 0.5) {
+				coin = "rolled heads!";
+			} else {
+				coin = "rolled tails!";
+			}
+			response = coin;
 			break;
-		case ROLL:
-			int bound = 11;
-			int randomNum = rand.nextInt(bound);
-			System.out.println(randomNum);
-		    break;
-		
+	//	case ROLL:
+		//	String roll = "";
+			//int num = (int)((Math.random()*50));
+			//response = num;
+		//	break;
+
 			
 		    
 		}
+		
 	    }
 	}
 	catch (Exception e) {
 	    e.printStackTrace();
 	}
-	return wasCommand;
+	return response;
     }
 
     // TODO changed from string to ServerThread
@@ -172,70 +175,26 @@ public class Room implements AutoCloseable {
      * @param sender  The client sending the message
      * @param message The message to broadcast inside the room
      */
-    protected void sendMessage(ServerThread sender, String message) {
-	log.log(Level.INFO, getName() + ": Sending message to " + clients.size() + " clients");
-	if (processCommands(message, sender)) {
-	    // it was a command, don't broadcast\
-	    return; 
-	}
-	Iterator<ServerThread> iter = clients.iterator();
-	
-	//flip
-	
-	if(message.equals("/flip")) 
-	{
-		int bound = 2;
-		int attempt = rand.nextInt(bound)+1;  // 0 or 1 + 1 = 1 or 2
-		
-		if(attempt == 1) 
-		{
-			String opt1 = "rolled heads!";
-			while (iter.hasNext()) 
-			{
-				
-			    ServerThread client = iter.next();
-			    boolean messageSent = client.send(sender.getClientName(), opt1);
-			    if (!messageSent) 
-			    {
-				iter.remove();
-				log.log(Level.INFO, "Removed client " + client.getId());
-			    }
-			}
+	protected void sendMessage(ServerThread sender, String message) {
+		log.log(Level.INFO, getName() + ": Sending message to " + clients.size() + " clients");
+		String response = processCommands(message, sender);
+		if (response != null) {
+			message = response;
 		}
-		
-		if(attempt == 2) 
-		{
-			String opt2 = "rolled tails!";
-			
-			while (iter.hasNext()) 
-			{
-			    ServerThread client = iter.next();
-			    boolean messageSent = client.send(sender.getClientName(), opt2);
-			    if (!messageSent) 
-			    {
-				iter.remove();
-				log.log(Level.INFO, "Removed client " + client.getId());
-			    }
-			}
-		}
-		
-	}
-	//roll features
-	if(message.equals("/roll")) {
-		int bound = 50;
-		int random = rand.nextInt(bound)+1;
-		String Message = "recieved a " + random;
-		
+
+		Iterator<ServerThread> iter = clients.iterator();
+
 		while (iter.hasNext()) {
-			
+
 			ServerThread client = iter.next();
-			boolean messageSent = client.send(sender.getClientName(), Message);
-		    if (!messageSent) {
-			iter.remove();
-			log.log(Level.INFO, "Removed client " + client.getId());
-		    }
+			boolean messageSent = client.send(sender.getClientName(), message);
+			if (!messageSent) {
+				iter.remove();
+				log.log(Level.INFO, "Removed client " + client.getId());
+			}
 		}
-	}
+		
+		
 		
 	
 	while (iter.hasNext()) {

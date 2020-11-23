@@ -70,10 +70,10 @@ public class ServerThread extends Thread {
      * @return
      */
     protected boolean send(String clientName, String message) {
-	Payload payload = new Payload();
-	payload.setPayloadType(PayloadType.MESSAGE);
-	payload.setClientName(clientName);
-	payload.setMessage(message);
+    	Payload payload = new Payload();
+    	payload.setPayloadType(PayloadType.MESSAGE);
+    	payload.setClientName(clientName);
+    	payload.setMessage(message);
 
 	return sendPayload(payload);
     }
