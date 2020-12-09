@@ -4,8 +4,12 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.ArrayList;       
+import java.util.List;			
+import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 
 public class ServerThread extends Thread {
     private Socket client;
@@ -15,7 +19,9 @@ public class ServerThread extends Thread {
     private Room currentRoom;// what room we are in, should be lobby by default
     private String clientName;
     private final static Logger log = Logger.getLogger(ServerThread.class.getName());
-
+    
+    
+    
     public String getClientName() {
 	return clientName;
     }
@@ -24,6 +30,12 @@ public class ServerThread extends Thread {
 	return currentRoom;
     }
 
+    List<String> userMuteList = new ArrayList<String>();   
+    
+    public boolean isMuted(String clientName) {		
+		return userMuteList.contains(clientName);     
+    }												
+    
     protected synchronized void setCurrentRoom(Room room) {
 	if (room != null) {
 	    currentRoom = room;
@@ -70,13 +82,14 @@ public class ServerThread extends Thread {
      * @return
      */
     protected boolean send(String clientName, String message) {
-    	Payload payload = new Payload();
-    	payload.setPayloadType(PayloadType.MESSAGE);
-    	payload.setClientName(clientName);
-    	payload.setMessage(message);
+	Payload payload = new Payload();
+	payload.setPayloadType(PayloadType.MESSAGE);
+	payload.setClientName(clientName);
+	payload.setMessage(message);
 
 	return sendPayload(payload);
     }
+
 
     protected boolean sendConnectionStatus(String clientName, boolean isConnect, String message) {
 	Payload payload = new Payload();
@@ -98,6 +111,14 @@ public class ServerThread extends Thread {
 	return sendPayload(payload);
     }
 
+    protected boolean sendRoom(String room) {
+	Payload payload = new Payload();
+	payload.setPayloadType(PayloadType.GET_ROOMS);
+	payload.setMessage(room);
+	
+	return sendPayload(payload);
+	
+    }
     private boolean sendPayload(Payload p) {
 	try {
 	    out.writeObject(p);
@@ -111,33 +132,47 @@ public class ServerThread extends Thread {
 	}
     }
 
-    /***
-     * Process payloads we receive from our client
-     * 
-     * @param p
-     */
+  
     private void processPayload(Payload p) {
-	switch (p.getPayloadType()) {
-	case CONNECT:
-	    // here we'll fetch a clientName from our client
-	    String n = p.getClientName();
-	    if (n != null) {
-		clientName = n;
-		log.log(Level.INFO, "Set our name to " + clientName);
-		if (currentRoom != null) {
-		    currentRoom.joinLobby(this);
-		}
-	    }
-	    break;
-	case DISCONNECT:
-	    isRunning = false;// this will break the while loop in run() and clean everything up
-	    break;
-	case MESSAGE:
-	    currentRoom.sendMessage(this, p.getMessage());
-	    break;
+    	switch (p.getPayloadType()) {
+    	case CONNECT:
+    	    // here we'll fetch a clientName from our client
+    	    String n = p.getClientName();
+    	    if (n != null) {
+    		clientName = n;
+    		log.log(Level.INFO, "Set our name to " + clientName);
+    		if (currentRoom != null) {
+    		    currentRoom.joinLobby(this);
+    		}
+    	    }
+    	    break;
+    	case DISCONNECT:
+    	    isRunning = false;
+    	    break;
+    	case MESSAGE:
+    	    currentRoom.sendMessage(this, p.getMessage());
+    	    break;
 	case CLEAR_PLAYERS:
-	    // we currently don't need to do anything since the UI/Client won't be sending
-	    // this
+	    
+	    break;
+	case GET_ROOMS:
+	    List<String> roomNames = currentRoom.getRooms();
+	    Iterator<String> iter = roomNames.iterator();
+	    while (iter.hasNext()) 
+	    {
+		String room = iter.next();
+		if (room != null && !room.equalsIgnoreCase(currentRoom.getName())) 
+		{
+		    if (!sendRoom(room)) 
+		    {
+			
+			break;
+		    }
+		}
+	}
+	    break;
+	case JOIN_ROOM:
+	    currentRoom.joinRoom(p.getMessage(), this);
 	    break;
 	default:
 	    log.log(Level.INFO, "Unhandled payload on server: " + p);
@@ -150,17 +185,17 @@ public class ServerThread extends Thread {
 	try {
 	    isRunning = true;
 	    Payload fromClient;
-	    while (isRunning && // flag to let us easily control the loop
-		    !client.isClosed() // breaks the loop if our connection closes
-		    && (fromClient = (Payload) in.readObject()) != null // reads an object from inputStream (null would
-									// likely mean a disconnect)
+	    while (isRunning && 
+		    !client.isClosed() 
+		    && (fromClient = (Payload) in.readObject()) != null 
+									
 	    ) {
 		System.out.println("Received from client: " + fromClient);
 		processPayload(fromClient);
-	    } // close while loop
+	    } 
 	}
 	catch (Exception e) {
-	    // happens when client disconnects
+	    
 	    e.printStackTrace();
 	    log.log(Level.INFO, "Client Disconnected");
 	}

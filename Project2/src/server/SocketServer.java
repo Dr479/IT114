@@ -2,11 +2,12 @@ package server;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 
 public class SocketServer {
     int port = 3000;
@@ -76,7 +77,7 @@ public class SocketServer {
 		r.close();
 	    }
 	    catch (Exception e) {
-		// it's ok to ignore this one
+		
 	    }
 	}
 	Iterator<Room> pl = isolatedPrelobbies.iterator();
@@ -86,28 +87,34 @@ public class SocketServer {
 		r.close();
 	    }
 	    catch (Exception e) {
-		// it's ok to ignore this one
+		
 	    }
 	}
 	try {
 	    lobby.close();
 	}
 	catch (Exception e) {
-	    // ok to ignore this too
+	    
 	}
     }
 
     protected Room getLobby() {
 	return lobby;
     }
-
-    /***
-     * Special helper to join the lobby and close the previous room client was in if
-     * it's marked as Prelobby. Mostly used for prelobby once the server receives
-     * more client details.
-     * 
-     * @param client
-     */
+    
+    protected List<String> getRooms() {
+    	
+    	List<String> roomNames = new ArrayList<String>();
+    	Iterator<Room> iter = rooms.iterator();
+    	while (iter.hasNext()) {
+    	    Room r = iter.next();
+    	    if (r != null && r.getName() != null) {
+    		roomNames.add(r.getName());
+    	    }
+    	}
+    	return roomNames;
+        }
+    
     protected void joinLobby(ServerThread client) {
 	Room prelobby = client.getCurrentRoom();
 	if (joinRoom(LOBBY, client)) {
@@ -119,12 +126,7 @@ public class SocketServer {
 	}
     }
 
-    /***
-     * Helper function to check if room exists by case insensitive name
-     * 
-     * @param roomName The name of the room to look for
-     * @return matched Room or null if not found
-     */
+    
     private Room getRoom(String roomName) {
 	for (int i = 0, l = rooms.size(); i < l; i++) {
 	    Room r = rooms.get(i);
@@ -188,15 +190,13 @@ public class SocketServer {
     }
 
     public static void main(String[] args) {
-	// let's allow port to be passed as a command line arg
-	// in eclipse you can set this via "Run Configurations"
-	// -> "Arguments" -> type the port in the text box -> Apply
+	
 	int port = -1;
 	try {
 	    port = Integer.parseInt(args[0]);
 	}
 	catch (Exception e) {
-	    // ignore this, we know it was a parsing issue
+	    
 	}
 	if (port > -1) {
 	    log.log(Level.INFO, "Starting Server");

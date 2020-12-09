@@ -12,12 +12,15 @@ public class Room implements AutoCloseable {
     private String name;
     private final static Logger log = Logger.getLogger(Room.class.getName());
 
-    // Commands
+
     private final static String COMMAND_TRIGGER = "/";
     private final static String CREATE_ROOM = "createroom";
     private final static String JOIN_ROOM = "joinroom";
     private final static String ROLL = "roll";
     private final static String FLIP = "flip";
+    private final static String MUTE = "mute";
+    private final static String UNMUTE = "unmute";
+    private final static String PM = "@";
     
     Random rand = new Random();
 
@@ -103,23 +106,29 @@ public class Room implements AutoCloseable {
      * @param client  The sender of the message (since they'll be the ones
      *                triggering the actions)
      */
-    private String processCommands(String message, ServerThread client) {
+    private String processCommands(String message, ServerThread client) 
+    {
 	String response = null;
-	try {
-	    if (message.indexOf(COMMAND_TRIGGER) > -1) {
+	try 
+	{
+	    if (message.indexOf(COMMAND_TRIGGER) > -1) 
+	    {
 		String[] comm = message.split(COMMAND_TRIGGER);
 		log.log(Level.INFO, message);
 		String part1 = comm[1];
 		String[] comm2 = part1.split(" ");
 		String command = comm2[0];
-		if (command != null) {
+		if (command != null) 
+		{
 		    command = command.toLowerCase();
 		}
 		String roomName;
-		switch (command) {
+		switch (command) 
+		{
 		case CREATE_ROOM:
 		    roomName = comm2[1];
-		    if (server.createNewRoom(roomName)) {  //auto joins the room after create room is entered
+		    if (server.createNewRoom(roomName)) 
+		    {  
 			joinRoom(roomName, client);
 		    }
 		    break;
@@ -130,70 +139,131 @@ public class Room implements AutoCloseable {
 		case FLIP:
 			String coin = "";
 			if (Math.random() < 0.5) {
-				coin = "rolled heads!";
+				coin = "<b style=color:red>Flipped heads!</b>";
 			} else {
-				coin = "rolled tails!";
+				coin = "<b style=color:green>Flipped tails!</b>";
 			}
 			response = coin;
 			break;
-	//	case ROLL:
-		//	String roll = "";
-			//int num = (int)((Math.random()*50));
-			//response = num;
-		//	break;
-
+		case ROLL:
+			Random rand = new Random();
+			String[] die = new String[]{ "1", "2", "3", "4", "5", "6" };
+			int idx = rand.nextInt(die.length);
+			String toString = Integer.toString(idx);
+			String rolling = "<b style=color:purple> Rolled a " + toString + "<b>";
+			response = (rolling);
+			break;
+		case UNMUTE:
+			String[] FirstUnMuteUser = comm2[1].split(PM);
+			String UnMuteUser2 = FirstUnMuteUser[1];
+			if (client.userMuteList.contains(UnMuteUser2)) {
+				client.userMuteList.remove(UnMuteUser2);
+				unmuteOption(client, UnMuteUser2);}
+				break;	
+		case MUTE:
+			String[] FirstMuteUser=comm2[1].split(PM);
+			String MuteUser1=FirstMuteUser[1];
+			if (!client.userMuteList.contains(MuteUser1)) {
+				client.userMuteList.add(MuteUser1);
+				muteOption(client, MuteUser1);
+			break;
+			}
 			
-		    
 		}
 		
-	    }
+	  }
 	}
-	catch (Exception e) {
+		//move over to top
+	catch (Exception e) 
+	{
 	    e.printStackTrace();
 	}
 	return response;
     }
 
     // TODO changed from string to ServerThread
-    protected void sendConnectionStatus(ServerThread client, boolean isConnect, String message) {
+    protected void sendConnectionStatus(ServerThread client, boolean isConnect, String message) 
+    {
 	Iterator<ServerThread> iter = clients.iterator();
-	while (iter.hasNext()) {
+	while (iter.hasNext()) 
+	{
 	    ServerThread c = iter.next();
 	    boolean messageSent = c.sendConnectionStatus(client.getClientName(), isConnect, message);
-	    if (!messageSent) {
+	    if (!messageSent) 
+	    {
 		iter.remove();
 		log.log(Level.INFO, "Removed client " + c.getId());
 	    }
 	}
     }
 
-    /***
-     * Takes a sender and a message and broadcasts the message to all clients in
-     * this room. Client is mostly passed for command purposes but we can also use
-     * it to extract other client info.
-     * 
-     * @param sender  The client sending the message
-     * @param message The message to broadcast inside the room
-     */
-	protected void sendMessage(ServerThread sender, String message) {
+    protected void muteOption(ServerThread client, String user) 
+    {
+		Iterator<ServerThread> iter = clients.iterator();
+		while (iter.hasNext()) 
+		{
+			ServerThread n = iter.next();
+			if (n.getClientName().equals(user)) 
+			{
+				
+			}
+		}
+	}
+    
+    protected void unmuteOption(ServerThread client, String user) 
+    {
+				Iterator<ServerThread> iter = clients.iterator();
+				while (iter.hasNext()) 
+				{
+					ServerThread n = iter.next();
+					if (n.getClientName().equals(user)) 
+					{
+				
+			}
+		}
+	}
+	protected void sendMessage(ServerThread sender, String message) 
+	{
 		log.log(Level.INFO, getName() + ": Sending message to " + clients.size() + " clients");
 		String response = processCommands(message, sender);
-		if (response != null) {
+		if (response != null) 
+		{
 			message = response;
+		}
+
+		boolean PMchecker = false;
+		String recipient = "";
+			try {
+				if (message.substring(0, 1).equals("@")) 		//if message from position 0-1 is @ then
+				{
+					int BeginOfDm = message.indexOf(" ");
+					PMchecker = true;
+					recipient = message.substring(1, BeginOfDm);
+					message = " (Message for " +recipient+ "):" + message.substring(BeginOfDm);
+			}
+			
+		}
+		catch (Exception e) 
+		{
+			log.log(Level.INFO, "Incorrect Response");
+			return;
 		}
 
 		Iterator<ServerThread> iter = clients.iterator();
 
-		while (iter.hasNext()) {
-
+		while (iter.hasNext()) 	
+		{
 			ServerThread client = iter.next();
-			boolean messageSent = client.send(sender.getClientName(), message);
-			if (!messageSent) {
-				iter.remove();
-				log.log(Level.INFO, "Removed client " + client.getId());
+			if (!client.isMuted(sender.getClientName()) && !PMchecker || client.getClientName().equals(recipient) || sender.getClientName().equals(client.getClientName())) 
+			{
+				boolean messageSent = client.send(sender.getClientName(), message);
+				if (!messageSent) 
+				{
+					iter.remove();
+					log.log(Level.INFO, "Removed User" + client.getId());
+				}
 			}
 		}
-		
 		
 		
 	
@@ -203,15 +273,14 @@ public class Room implements AutoCloseable {
 	    boolean messageSent = client.send(sender.getClientName(), message);
 	    if (!messageSent) {
 		iter.remove();
-		log.log(Level.INFO, "Removed client " + client.getId());
+		log.log(Level.INFO, "Removed User " + client.getId());
 	    }
 	}
     }
-
-    /***
-     * Will attempt to migrate any remaining clients to the Lobby room. Will then
-     * set references to null and should be eligible for garbage collection
-     */
+	public List<String> getRooms() {
+		return server.getRooms();
+	    }
+  
     @Override
     public void close() throws Exception {
 	int clientCount = clients.size();
@@ -230,5 +299,7 @@ public class Room implements AutoCloseable {
 	name = null;
 	// should be eligible for garbage collection now
     }
+
+
 
 }
